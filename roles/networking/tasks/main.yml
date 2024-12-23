@@ -1,0 +1,101 @@
+- name: Configure network (static)
+  when: not dhcp | default(false)
+  block:
+    - name: Install 10-static-ethernet.network
+      ansible.builtin.template:
+        src: 10-static-ethernet.network.j2
+        dest: "{{ networking_chroot_path }}/etc/systemd/network/10-static-ethernet.network"
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Restart networkd
+
+    - name: Create drop-in directory for 10-static-ethernet.network
+      ansible.builtin.file:
+        path: "{{ networking_chroot_path }}/etc/systemd/network/10-static-ethernet.network.d"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure static dns (static)
+      ansible.builtin.copy:
+        src: dns.conf
+        dest: "{{ networking_chroot_path }}/etc/systemd/network/10-static-ethernet.network.d/dns.conf"
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Restart networkd
+      when: static_dns | default(true)
+
+- name: Configure network (dhcp)
+  when: dhcp | default(false)
+  block:
+    - name: Install 10-dhcp-ethernet.network
+      ansible.builtin.template:
+        src: 10-dhcp-ethernet.network.j2
+        dest: "{{ networking_chroot_path }}/etc/systemd/network/10-dhcp-ethernet.network"
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Restart networkd
+
+    - name: Create drop-in directory for 10-dhcp-ethernet.network
+      ansible.builtin.file:
+        path: "{{ networking_chroot_path }}/etc/systemd/network/10-dhcp-ethernet.network.d"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure static dns (dhcp)
+      ansible.builtin.copy:
+        src: dns.conf
+        dest: "{{ networking_chroot_path }}/etc/systemd/network/10-dhcp-ethernet.network.d/dns.conf"
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Restart networkd
+      when: static_dns | default(false)
+
+- name: Configure additional network addresses
+  ansible.builtin.template:
+    src: additional_addresses.conf.j2
+    dest: >
+      {{ networking_chroot_path }}/etc/systemd/network/
+      10-{{ 'dhcp' if dhcp | default(false) else 'static' }}-ethernet.network.d/
+      additional_addresses.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart networkd
+  when: additional_addresses is defined
+
+- name: Create symlink to resolv.conf
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: "{{ networking_chroot_path }}/etc/resolv.conf"
+    state: link
+    force: true
+    follow: false
+    owner: root
+    group: root
+
+- name: Start and enable networkd
+  ansible.builtin.service:
+    name: systemd-networkd
+    state: started
+    enabled: true
+  when: networking_chroot_path | length == 0
+
+- name: Start and enable resolved
+  ansible.builtin.service:
+    name: systemd-resolved
+    state: started
+    enabled: true
+  when: networking_chroot_path | length == 0

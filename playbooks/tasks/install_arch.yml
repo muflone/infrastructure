@@ -1,0 +1,7 @@
+- name: Install Arch Linux
+  hosts: all
+  remote_user: root
+  roles:
+    - install_arch
+  vars:
+    bootstrap_version: "latest"

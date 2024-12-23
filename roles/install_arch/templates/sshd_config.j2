@@ -1,0 +1,9 @@
+Port {{ ansible_port | default(22) }}
+LogLevel VERBOSE
+PasswordAuthentication no
+
+AllowAgentForwarding no
+AllowTcpForwarding no
+
+# unlink forwarded sockets; for gpg agent forwarding
+StreamLocalBindUnlink yes
