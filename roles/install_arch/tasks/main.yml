@@ -23,6 +23,7 @@
   ansible.builtin.command:
     argv:
       - sgdisk
+      - --mbrtogpt
       - --align-end
       - --clear
       - --new=0:0:+1M
